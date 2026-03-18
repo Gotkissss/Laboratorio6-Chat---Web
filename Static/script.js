@@ -1,10 +1,13 @@
+// ─────────────────────────────────────
 //  Configuración
+// ─────────────────────────────────────
 
-const API_URL    = 'https://chat.joelsiervas.online/messages';
 const REFRESH_MS = 3000;
 const MAX_CHARS  = 140;
 
+// ─────────────────────────────────────
 //  Referencias al DOM
+// ─────────────────────────────────────
 const messagesList = document.getElementById('messages-list');
 const messagesWrap = document.getElementById('messages-wrap');
 const emptyState   = document.getElementById('empty-state');
@@ -15,20 +18,23 @@ const charCount    = document.getElementById('char-count');
 const statusDot    = document.getElementById('status-dot');
 const statusText   = document.getElementById('status-text');
 
+// ─────────────────────────────────────
 //  Estado
+// ─────────────────────────────────────
 const knownIds = new Set();
 
+// ─────────────────────────────────────
 //  Persistir nombre entre sesiones
-
+// ─────────────────────────────────────
 nameInput.value = localStorage.getItem('chat_name') || '';
 
 nameInput.addEventListener('input', () => {
   localStorage.setItem('chat_name', nameInput.value.trim());
 });
 
-
+// ─────────────────────────────────────
 //  Contador de caracteres
-
+// ─────────────────────────────────────
 msgInput.addEventListener('input', () => {
   const len = msgInput.value.length;
   charCount.textContent = `${len} / ${MAX_CHARS}`;
@@ -49,7 +55,9 @@ function autoResize() {
   msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
 }
 
-
+// ─────────────────────────────────────
+//  Enter para enviar (Shift+Enter = salto de línea)
+// ─────────────────────────────────────
 msgInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -59,8 +67,9 @@ msgInput.addEventListener('keydown', (e) => {
 
 sendBtn.addEventListener('click', sendMessage);
 
-
+// ─────────────────────────────────────
 //  Enviar mensaje
+// ─────────────────────────────────────
 async function sendMessage() {
   const text = msgInput.value.trim();
   const name = nameInput.value.trim() || 'anónimo';
@@ -85,14 +94,15 @@ async function sendMessage() {
   }
 }
 
+// ─────────────────────────────────────
 //  Cargar mensajes del servidor
-
+// ─────────────────────────────────────
 async function loadMessages() {
   try {
     const res  = await fetch(API_URL);
     const data = await res.json();
 
-
+    // acepta array directo o { messages: [...] }
     const msgs = Array.isArray(data) ? data : (data.messages || []);
 
     setStatus(true);
@@ -103,9 +113,9 @@ async function loadMessages() {
   }
 }
 
-
+// ─────────────────────────────────────
 //  Indicador de estado de conexión
-
+// ─────────────────────────────────────
 function setStatus(online) {
   if (online) {
     statusDot.classList.add('online');
@@ -116,11 +126,12 @@ function setStatus(online) {
   }
 }
 
-
+// ─────────────────────────────────────
 //  Renderizar mensajes nuevos
-
+// ─────────────────────────────────────
 function renderMessages(msgs) {
-
+  // ¿El usuario está leyendo mensajes anteriores (scroll arriba)?
+  // Solo bajamos automáticamente si ya estaba cerca del fondo.
   const atBottom =
     messagesWrap.scrollHeight - messagesWrap.scrollTop - messagesWrap.clientHeight < 80;
 
@@ -135,6 +146,7 @@ function renderMessages(msgs) {
   emptyState.classList.add('hidden');
 
   msgs.forEach((msg) => {
+    // id único por mensaje; fallback: serializar el objeto
     const id = msg.id ?? (msg.user + '::' + msg.message + '::' + (msg.timestamp || ''));
 
     if (knownIds.has(id)) return;
@@ -146,15 +158,15 @@ function renderMessages(msgs) {
     messagesList.appendChild(el);
   });
 
-
+  // Preservar scroll: solo desplazar si ya estábamos abajo
   if (addedAny && atBottom) {
     messagesWrap.scrollTop = messagesWrap.scrollHeight;
   }
 }
 
-
+// ─────────────────────────────────────
 //  Construir burbuja de mensaje
-
+// ─────────────────────────────────────
 function buildBubble(msg, isMe) {
   const wrapper = document.createElement('div');
   wrapper.className = `msg ${isMe ? 'me' : 'other'}`;
@@ -173,7 +185,7 @@ function buildBubble(msg, isMe) {
   // texto con links clicables
   bubble.appendChild(buildTextNode(text));
 
-
+  // preview de imagen (si hay URL de imagen en el texto)
   const imgUrl = extractImageUrl(text);
   if (imgUrl) {
     const img = document.createElement('img');
@@ -186,7 +198,7 @@ function buildBubble(msg, isMe) {
     bubble.appendChild(img);
   }
 
-
+  // preview de página web (si hay URL pero no es imagen)
   else {
     const webUrl = extractWebUrl(text);
     if (webUrl) {
@@ -208,9 +220,9 @@ function buildBubble(msg, isMe) {
   return wrapper;
 }
 
-
+// ─────────────────────────────────────
 //  Texto con links clicables
-
+// ─────────────────────────────────────
 function buildTextNode(raw) {
   const span  = document.createElement('span');
   const urlRe = /https?:\/\/[^\s]+/g;
@@ -239,23 +251,25 @@ function buildTextNode(raw) {
   return span;
 }
 
-
+// ─────────────────────────────────────
 //  Detectar URL de imagen en el texto
-
+// ─────────────────────────────────────
 function extractImageUrl(text) {
   const match = text.match(/https?:\/\/\S+\.(?:png|jpe?g|gif|webp|svg|bmp)(\?\S*)?/i);
   return match ? match[0] : null;
 }
 
-
+// ─────────────────────────────────────
 //  Detectar cualquier URL en el texto
-
+// ─────────────────────────────────────
 function extractWebUrl(text) {
   const match = text.match(/https?:\/\/[^\s]+/);
   return match ? match[0] : null;
 }
 
+// ─────────────────────────────────────
 //  Preview de enlace web (Open Graph)
+// ─────────────────────────────────────
 async function fetchLinkPreview(url, bubble) {
   const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
@@ -314,14 +328,17 @@ async function fetchLinkPreview(url, bubble) {
     body.appendChild(hostEl);
     card.appendChild(body);
 
+    // insertar antes del elemento <time>
     const timeEl = bubble.querySelector('time');
     bubble.insertBefore(card, timeEl);
 
   } catch (_) {
+    
   }
 }
 
-
+// ─────────────────────────────────────
 //  Auto-refresh
+// ─────────────────────────────────────
 loadMessages();
 setInterval(loadMessages, REFRESH_MS);
